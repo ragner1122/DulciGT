@@ -1,0 +1,259 @@
+You are an expert product engineer + UX designer + QA lead. Build a production-ready web app named “IELTS GT SmartPrep” for IELTS General Training (Computer-Based) preparation in 15–30 days. The app must be fast, clean, reliable, and structured exactly like real practice with smart AI scoring.
+
+Non-negotiables
+	•	This is IELTS General Training ONLY (must not mix Academic).
+	•	App must include: Mock tests, Question Bank, Smart shuffling, Upload PDF/Image → auto-organise, AI marking (Writing + Speaking), Materials, Analytics, Study plan, plus Typing speed trainer, Reading question-type trainer, Band jump planner, Speaking simulator.
+	•	AI outputs must be strictly structured JSON and stored to DB.
+	•	Must be mobile-first but also excellent on desktop (computer-based test practice).
+	•	Must be robust: no broken flows, no placeholder pages, no fake data unless clearly labeled “demo”.
+
+⸻
+
+1) App sections (navigation)
+
+Create these top-level tabs:
+	1.	Dashboard
+	•	Test date selector, target band, daily plan
+	•	Streak + minutes studied
+	•	“Weakest skills” cards (from analytics)
+	•	“Next recommended mock” button
+	2.	Mock Tests
+	•	Modes: Full mock, Section mock, Mini drills
+	•	Exam UI: timer, question navigator grid, flag questions, autosave, review screen
+	•	Listening/Reading: auto scoring + review explanations (where available)
+	•	Writing: Task 1 letter + Task 2 essay with AI marking
+	•	Speaking: record answers + AI feedback
+	3.	Question Bank
+	•	Central repository of all questions (built-in + uploaded)
+	•	Filter by: skill (L/R/W/S), section/part, question type, difficulty, source, tags
+	•	Button: “Generate new test” (uses smart shuffler engine described below)
+	4.	Upload & Auto-Organise
+	•	Upload PDF or images (scans/photos)
+	•	Pipeline: extract content → detect structure → create question sets → validate → save
+	•	Show user: extracted passage/questions + allow manual correction before saving
+	•	Must support: answer keys if present
+	5.	Training Lab
+	•	Typing Speed Trainer (WPM + accuracy + IELTS-style writing prompts)
+	•	Reading Question-Type Trainer (T/F/NG, matching headings, matching info, MCQ, sentence completion, etc.) with “why wrong” explanations
+	•	Speaking Simulator (cue cards + prep timer + talk timer + follow-up questions)
+	6.	Band Jump Planner
+	•	Choose target band (e.g., 6/7)
+	•	Compares user’s last 5 Writing + Speaking scores vs rubric criteria
+	•	Shows: “What to improve to move from X → Y” + practice tasks auto-assigned
+	7.	Materials
+	•	Library: GT examples, guidance, tips, templates
+	•	“Add to my plan” button for any material
+	8.	Analytics
+	•	Listening/Reading accuracy by question type
+	•	Writing error themes (grammar/vocab cohesion)
+	•	Speaking fluency and repeated issues
+	•	Progress chart over time
+
+⸻
+
+2) Smart Question Bank & Test Generator (CRITICAL)
+
+Implement a Test Assembly Engine that builds realistic tests from the question bank without mistakes.
+
+Required capabilities
+	•	Generate tests for:
+	•	Listening (4 parts)
+	•	Reading GT (3 sections)
+	•	Writing (Task 1 + Task 2)
+	•	Speaking (Part 1, 2 cue card, Part 3)
+	•	Enforce structure constraints:
+	•	Each generated test must include correct parts/sections and question counts based on the chosen template stored in DB.
+	•	Prevent mistakes:
+	•	No duplicate questions within a test.
+	•	No missing question numbers.
+	•	Preserve passage-question linkage.
+	•	Preserve answer keys and marking scheme if present.
+	•	Smart shuffle:
+	•	Use stratified sampling by:
+	•	skill + section/part + question type + difficulty
+	•	Ensure balanced distribution (avoid all questions being same type).
+	•	Ensure every generated test is different, but still consistent in difficulty.
+
+Deterministic mode
+	•	Add a “Seed” option (default random) so the same test can be regenerated for review or sharing.
+
+Validation checks (must run before saving a generated test)
+	•	Verify:
+	•	required sections exist
+	•	required question types distribution meets thresholds
+	•	passage references exist
+	•	answer key coverage >= 95% for auto-scored sections
+	•	If validation fails:
+	•	automatically re-generate with a new sample until valid (max retries), then show a clear error.
+
+Data structures needed
+	•	Question entity must store:
+	•	id, skill, section/part, question_type, difficulty, text, options, correct_answer(s), explanation, passage_id (optional), media_url (optional), tags, source_id, created_at
+	•	Passage entity:
+	•	id, title, body, related_question_ids
+	•	TestTemplate entity:
+	•	defines structure rules: required sections, counts, allowed types
+
+⸻
+
+3) Upload → Auto-Organise (PDF/Image)
+
+Build a real import pipeline:
+
+Pipeline steps
+	1.	Upload file → store raw file
+	2.	Extract text:
+	•	PDF text extraction (native)
+	•	Image → OCR extraction
+	3.	Detect content type:
+	•	Is it Listening / Reading / Writing / Speaking?
+	4.	Parse into structured format:
+	•	identify passages, questions, options, answer keys
+	5.	Show “Review & Fix” UI:
+	•	user can edit fields, fix option labels, mark correct answers
+	6.	Validate & Save:
+	•	run integrity checks before committing to DB
+
+Must include “Import quality score”
+	•	Show extraction confidence and highlight uncertain fields for manual review.
+
+⸻
+
+4) AI Marking & Feedback (Writing + Speaking)
+
+Integrate AI scoring with strict JSON output + stored history.
+
+Writing AI (Task 1 + Task 2)
+	•	User pastes typed writing (computer-based style)
+	•	AI returns:
+	•	overall_band_estimate
+	•	criterion_scores: task achievement/response, coherence & cohesion, lexical resource, grammar range & accuracy
+	•	evidence (short quotes)
+	•	top_5_fix_actions
+	•	rewritten examples (short snippets only, not full essays)
+	•	checklist for next attempt
+	•	Must keep clear UI label: “AI score estimate, not official IELTS.”
+
+Speaking AI
+	•	User records audio:
+	•	transcribe speech
+	•	score:
+	•	fluency/coherence, lexical resource, grammar, pronunciation
+	•	provide drills (shadowing, intonation, filler reduction)
+	•	Speaking simulator mode:
+	•	Part 1: rapid Qs
+	•	Part 2: cue card with prep timer + speak timer
+	•	Part 3: deeper discussion Qs
+	•	Save every attempt + allow replay, transcript, and progress.
+
+Safety / policy rules
+	•	Refuse to provide copyrighted full test content verbatim if user requests it in full; instead focus on feedback and user-provided uploads.
+	•	Never claim “official” scoring.
+
+⸻
+
+5) High-impact extra features (must implement)
+
+A) Typing Speed Trainer (Writing)
+	•	Live WPM + accuracy
+	•	IELTS-style prompt appears, user types
+	•	Track:
+	•	WPM average
+	•	error rate
+	•	speed under timed conditions
+	•	Add “Exam typing mode” with 40 minutes and writing prompts.
+
+B) Reading Question-Type Trainer
+	•	Dedicated drills by type:
+	•	T/F/NG
+	•	matching headings
+	•	matching information
+	•	MCQ
+	•	sentence completion
+	•	short answer
+	•	Must include “Why wrong” explanations:
+	•	highlight passage evidence
+	•	explain trap options
+	•	teach strategy (skimming/scanning keywords)
+
+C) Band Jump Planner
+	•	User selects target band (e.g., 6 or 7)
+	•	System compares last attempts vs rubric criteria and shows:
+	•	“You are losing marks mainly in X”
+	•	“To reach band Y, you must do A/B/C”
+	•	Auto-assign practice tasks into daily plan.
+
+D) Speaking Simulator
+	•	Realistic speaking flow with timers, recording, transcription, scoring.
+	•	Provide “model answer snippets” and improvement drills.
+
+⸻
+
+6) Study plan (15–30 days)
+
+Create a plan generator:
+	•	Inputs: test date, daily available minutes, target band, baseline diagnostic
+	•	Output: daily schedule with:
+	•	reading drills by weak type
+	•	writing tasks 3–5/week with AI scoring
+	•	speaking simulator 3–5/week
+	•	1–2 full mocks/week
+	•	Must auto-adjust plan when user misses days.
+
+⸻
+
+7) UI / Design requirements
+	•	Clean minimal design, calming palette (light background, navy text, one accent)
+	•	Typography: large readable, accessible contrast
+	•	Exam mode UI must be distraction-free:
+	•	timer visible
+	•	question grid
+	•	flag feature
+	•	autosave indicator
+	•	Include dark mode toggle.
+
+⸻
+
+8) Tech stack & architecture (choose sensible defaults and implement fully)
+
+Build a full-stack app with:
+	•	Frontend: modern component framework (Next.js/React preferred)
+	•	Backend: API + DB
+	•	Auth: email + Google
+	•	DB schema for: users, attempts, questions, passages, templates, uploads, ai_feedback, study_plan_days, streaks, analytics_rollups
+	•	File storage: uploads + audio
+	•	Background jobs: OCR, parsing, transcription, AI scoring
+	•	Observability: logs + error tracking
+
+⸻
+
+9) QA and Acceptance Criteria (must be satisfied)
+	1.	New user can sign up, set test date, run diagnostic, get a plan.
+	2.	Mock tests work end-to-end: take → submit → score → review mistakes → saved history.
+	3.	Question bank generator produces valid tests consistently with correct structure and no duplicates.
+	4.	Upload pipeline works: upload → parse → user review → save → generates mock from imported material.
+	5.	AI marking returns valid JSON every time; if AI fails, system retries and shows clean error.
+	6.	Analytics shows real charts based on stored attempts.
+	7.	App is responsive and fast, no broken navigation.
+
+⸻
+
+10) Deliverables
+	•	Complete running app with:
+	•	database migrations
+	•	seed data (small legal-safe demo content)
+	•	environment variables documented
+	•	deployment instructions (Vercel/Render or similar)
+	•	Provide admin controls:
+	•	manage templates
+	•	manage question bank
+	•	moderate imported content
+	•	view AI usage costs
+
+IMPORTANT: Do not leave anything as “TODO” or “placeholder”. If something requires a third-party service (OCR/transcription), integrate a real workable option with clear setup.
+
+⸻
+
+Extra (optional but recommended)
+	•	Add a “Confidence score” per predicted band (based on consistency and evidence).
+	•	Add “Mistake notebook” where user saves recurring errors and the app schedules them for review.
