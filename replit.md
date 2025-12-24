@@ -51,6 +51,20 @@ All endpoints are defined in `shared/routes.ts` with Zod schemas:
 - **Centralized Error Handling**: Zod validation errors return structured JSON with field information
 - **Band Score Storage**: Half bands (6.5, 7.0) stored as integers multiplied by 2 (13, 14) in database
 - **Idempotent Seeding**: Database seed script checks for existing data before inserting
+- **Client Input Schemas**: `createAttemptInputSchema` omits userId (server adds from session)
+- **Nested Question Extraction**: `getTest` extracts questionIds from sections, nested tasks, and parts
+
+### Question & Options Format
+- **Multiple Choice**: Options stored as objects `{a: "...", b: "...", c: "...", d: "..."}`
+- **True/False/Not Given**: `options: null`, rendered as True/False/Not Given buttons
+- **Short Answer**: `options: null`, rendered as text input
+- **Essay/Letter**: `options: null`, rendered as textarea
+- **correctAnswer**: Stored as key ("a", "b") for MC, string for T/F ("true", "false"), null for writing
+
+### Seeded Content
+- 9 passages across 6 topics (Tea History, Remote Work, Exercise, Fashion, Digital Literacy, Marine Biology)
+- 32 questions (Reading, Writing, Speaking, Listening)
+- 5 system tests including comprehensive "IELTS GT Full Mock Test 1" with all 4 sections
 
 ## External Dependencies
 
