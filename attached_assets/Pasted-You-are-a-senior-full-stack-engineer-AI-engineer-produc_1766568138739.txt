@@ -1,0 +1,269 @@
+You are a senior full-stack engineer + AI engineer + product designer + security engineer.
+You will upgrade the existing app into a REAL production-grade platform named:
+
+DULCi IELTS HUB
+
+This is for IELTS GENERAL TRAINING (computer-based). 
+NO placeholders. If something can’t be finished, it must be disabled with a clear UI message and a TODO list.
+
+TOP PRIORITY
+Make the app “alive”: seeded content + working routes + working planner + working mock tests + working AI scoring + working uploads.
+
+STACK/CONTEXT
+- Running on Replit
+- Database: Neon Postgres
+- Schema already exists (do NOT break current tables/enums):
+  enums: section (listening, reading, writing, speaking), question_type (...)
+  tables: users, sessions, passages, questions, tests, attempts, attempt_answers, study_plans, uploads, conversations, messages
+- Shared API contract exists in shared/routes.ts. Implement handlers matching these endpoints EXACTLY:
+  /api/questions (GET/POST)
+  /api/questions/generate-test (POST)
+  /api/tests (GET)
+  /api/tests/:id (GET)
+  /api/attempts (GET/POST)
+  /api/attempts/:id/answers (POST)
+  /api/attempts/:id/complete (POST)
+  /api/study-plan (GET/POST)
+  /api/uploads/history (GET)
+  /api/uploads/:id/process (POST)
+
+MAIN PROBLEMS TO FIX
+1) UI exists but data is empty; feels like placeholders.
+2) Planner generation returns nothing or doesn’t persist.
+3) Mock tests + question bank empty due to no seed and no ingestion.
+4) AI scoring not integrated; OpenAI not wired; no subscription enforcement.
+5) Missing production-grade security.
+
+MANDATORY BUILD STYLE
+- Implement in phases. After each phase, run checks and verify UI works.
+- Keep code clean, typed, modular.
+- Server-side OpenAI calls only (never expose keys).
+- Strong validation (zod) everywhere.
+- Prevent context overflow: chunk + retrieve; never send full book scans in one prompt.
+
+========================================
+PHASED EXECUTION PLAN (MUST FOLLOW)
+========================================
+
+PHASE 0 — Audit & Map (fast)
+- Identify stack (frontend framework, backend server, ORM/query layer, auth).
+- List key folders/files.
+- Identify missing handlers for endpoints.
+- Identify why planner UI does nothing (missing route, client not calling, or DB write failing).
+
+PHASE 1 — Make App Alive in 1 Hour
+A) Seed Script (non-copyright ORIGINAL demo content)
+- Add idempotent seed script:
+  - 10 short reading passages + 10 long reading passages (original content)
+  - 120+ questions across many question types (not only MCQ)
+  - 2 complete mock tests (reading/listening/writing/speaking structure)
+  - At least 10 writing letter prompt + 10 essay prompt + 10 speaking prompts
+- Ensure question grouping works: passage_id relations correct.
+
+B) Fix /api/questions and /api/tests endpoints
+- Confirm /api/questions returns real data from DB.
+- Confirm /api/tests returns seeded tests.
+- Fix UI so Question Bank and Mock Tests show data immediately.
+
+PHASE 2 — Full Mock Test Flow (end-to-end)
+- Implement create attempt -> answer submission -> completion -> review results.
+- Implement strict timer + autosave + resume attempt.
+- Reading/Listening: instant marking where correct_answer exists.
+- Writing/Speaking: stored response + AI scoring on completion or on-demand.
+
+PHASE 3 — Planner + Analytics (end-to-end)
+- Planner generation must:
+  - create a 15-day plan AND 30-day plan modes
+  - persist to study_plans.plan_data and render later
+  - adapt using attempt history (weak areas)
+- Analytics must show:
+  - overall band progression estimate
+  - skill breakdown (reading/listening/writing/speaking)
+  - weakest area card with “Practice Now”
+  - streak tracking
+  - mistake heatmap by question type (PRO feature)
+
+PHASE 4 — Uploads / Ingestion (copyright-safe)
+- BYO content only:
+  - PDF/text/image/audio user-owned
+  - private per user
+  - confirm rights checkbox
+- Pipeline:
+  Step 1: uploads row (status=uploaded)
+  Step 2: extract text (PDF parse; OCR only if needed)
+  Step 3: AI extraction into structured JSON:
+    passages + questions + answer keys + tags + confidence score
+  Step 4: Review & Fix UI (user edits before import)
+  Step 5: Import into passages/questions/tests
+- Must include fallback:
+  - user paste text
+  - upload answer key separately
+  - manual correction UI for low confidence
+- Add delete upload and delete imported content tools.
+
+PHASE 5 — OpenAI AI Features (real + efficient)
+Use OpenAI only:
+- Env var OPENAI_API_KEY
+- Default text model: gpt-4o-mini
+- STT model: gpt-4o-mini-transcribe
+- TTS model: gpt-4o-mini-tts
+
+AI modules to implement:
+1) Writing Task 1 (Letter) Scoring
+- IELTS GT rubric-based: Task Achievement, Coherence/Cohesion, Lexical Resource, Grammar
+- Output: criterion bands + overall band estimate + 5 actionable fixes + corrected version + model answer
+- Must store ai_feedback in attempt_answers or attempts.score.
+
+2) Writing Task 2 (Essay) Scoring
+- Same structure + model answer + improvement drills.
+
+3) Speaking Simulator (Parts 1/2/3)
+- Timed prep + timed talk + recording
+- STT -> rubric scoring: Fluency/Coherence, Lexical Resource, Grammar, Pronunciation
+- Output: band estimate + drill plan + suggested better phrases.
+- Store transcript and feedback.
+
+4) “Why Wrong” Explanations
+- If explanation missing, generate short explanation and store it to question.explanation (cache).
+
+5) Band Jump Planner
+- If target band is chosen, show exactly what rubric gaps exist and what to fix next.
+
+AI COST CONTROL (do NOT show “AI budget” to users)
+- Implement internal metering:
+  tables: subscriptions, usage_events (and optional monthly_usage_summary)
+- For each AI call: log event_type, model, token estimates/minutes, estimated_cost.
+- Enforce plan allowances as “feature limits”:
+  Example allowances (can adjust):
+  PLUS $40/mo:
+    - Writing evaluations: 40/month
+    - Speaking: 120 minutes/month
+    - AI explanations: 500/month
+    - Upload processing: 10 files + 250 pages/month
+    - Generated full mock tests: 30/month
+    - Practice sessions: unlimited basic
+  PRO $70/mo:
+    - Double limits + PRO-only features (YouTube listening + advanced analytics)
+- When limit reached:
+  - show friendly message: “You’ve reached this month’s limit for X. Upgrade to PRO or wait for reset.”
+  - optional “lite mode” feedback (shorter) instead of full block.
+
+========================================
+NEXT-LEVEL FEATURES (ADD THESE)
+========================================
+1) Smart “Adaptive Test Builder”
+- Generates tests by mixing question types fairly.
+- Avoid repeating recently practiced questions.
+- Balanced difficulty.
+- Keeps passage/question grouping correct.
+
+2) Error Review Mode (“Mistake Notebook”)
+- Automatically saves every wrong answer with:
+  - question snapshot
+  - why wrong
+  - correct logic
+  - user’s mistake tag (optional)
+- Daily review queue “20 mistakes in 10 minutes.”
+
+3) Writing Template Library (GT-specific)
+- Letter templates by type: complaint, request, apology, invitation, job application.
+- Essay templates: opinion, discussion, advantages/disadvantages, problem/solution.
+- Provide “fill-in framework” + AI check.
+
+4) Vocabulary & Collocation Builder
+- Extract weak vocabulary from writing/speaking.
+- Create flashcards + spaced repetition.
+- Category tags: work, travel, housing, education.
+
+5) Pronunciation Helper (Speaking)
+- After transcript, highlight mispronounced words (heuristic) + give practice list.
+- Keep it simple and robust (don’t fake accuracy claims).
+
+6) Offline-friendly “Exam Mode”
+- If AI unavailable, test still runs (answers saved, scoring later).
+- Queue AI scoring tasks when back online.
+
+7) Beautiful UX Upgrade (must) (as now you are more intelligent and super building model).
+
+- Modern, clean, fast.
+- Skeleton loaders (not blank).
+- Real empty states with “Add content / Run seed” instructions.
+- Smooth navigation.
+- Mobile-first.
+
+========================================
+LISTENING MODULE OPTIONS (PRODUCTION SAFE)
+========================================
+Implement 3 listening sources:
+
+1) AI-generated listening packs (original, safest)
+- Generate transcript + TTS audio
+- Generate questions + answer key + structure
+
+2) User-owned audio upload
+- STT -> transcript
+- Generate questions + answer key + structure
+
+3) YouTube listening mode (PRO ONLY)
+- User pastes YouTube link, app embeds player
+- “Auto transcript” ONLY using legit captions/transcript availability (no ripping/downloading)
+- If transcript not available: ask user to paste transcript or upload audio they own
+- Then generate questions + a full Listening test part structure
+- Never download/rip YouTube audio/video
+- Make this feature simple: transcript-first pipeline. (Video playback is separate.)
+
+========================================
+SUBSCRIPTIONS (NO MENTION OF AI BUDGET)
+========================================
+Plans:
+- PLUS: $40/month
+- PRO: $70/month
+
+Subscription page must show:
+- exact monthly allowances (uploads/pages, full tests, writing evaluations, speaking minutes, AI explanations)
+- PRO only: YouTube listening, advanced analytics, priority processing, mistake heatmap, deeper study planner.
+- value statements:
+  - “Replace expensive coaching”
+  - “Real rubric scoring”
+  - “Computer-based typing trainer”
+  - “Daily plan to jump 1 band”
+- Include a live “Usage Meter” showing remaining allowances (not dollars).
+
+Billing integration:
+- If Stripe is not implemented yet, build subscription states in DB and a clean UI that supports future Stripe integration.
+- Must not block app usage in development.
+
+========================================
+SECURITY / PRODUCTION HARDENING (MUST)
+- Secure cookies (httpOnly, secure, sameSite)
+- CSRF protection for cookie sessions
+- Rate limiting: login, AI endpoints, uploads
+- Zod validation everywhere
+- Parameterized DB queries
+- Authorization checks per user_id everywhere
+- Upload security: type/size limits, private storage, signed URLs, malware scan hook placeholder
+- CSP headers + Helmet
+- CORS locked down
+- Audit logs for key actions
+
+========================================
+ACCEPTANCE TESTS (MUST PASS)
+1) New user signs up -> sees working dashboard with seeded content available immediately.
+2) Question Bank has real questions, filters work, practice works, explanations appear.
+3) Mock test can be started, timed, autosaved, resumed, completed; review appears.
+4) Planner generates and persists and renders; daily tasks visible.
+5) Writing evaluation returns rubric feedback; speaking returns transcript + rubric feedback.
+6) Upload -> process -> review & fix -> import -> new practice/test appears.
+7) Subscription page shows PLUS vs PRO allowances; limits are enforced; friendly messages.
+8) YouTube listening mode is PRO-only, transcript-first, no audio ripping.
+9) Security basics implemented; OpenAI key never exposed; rate limiting active.
+
+OUTPUT REQUIRED FROM YOU (AGENT)
+- Provide list of changed files and what changed.
+- Provide how to run seed.
+- Provide how to test endpoints quickly.
+- Provide deployment steps on Replit.
+- Ensure no placeholders remain.
+
+Now implement end-to-end in the existing codebase (do not rebuild from scratch).
+Start with PHASE 1: seed + /api/questions + /api/tests so the UI becomes alive immediately.

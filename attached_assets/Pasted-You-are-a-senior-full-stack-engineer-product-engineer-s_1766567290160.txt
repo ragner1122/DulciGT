@@ -1,0 +1,173 @@
+You are a senior full-stack engineer + product engineer + security engineer. 
+Upgrade the existing IELTS SmartPrep app into a REAL production-grade app named:
+
+DULCi IELTS HUB
+
+The app is for IELTS GENERAL TRAINING (computer-based). 
+Do NOT leave placeholders. Every button must work or be disabled with an explanation.
+
+STACK/CONTEXT
+- Deployed on Replit
+- Database: Neon Postgres
+- Schema is already created (do not break it):
+  enums: section (listening, reading, writing, speaking), question_type (...)
+  tables: users, sessions, passages, questions, tests, attempts, attempt_answers, study_plans, uploads, conversations, messages
+- Shared API contract exists in shared/routes.ts. Implement handlers exactly matching these endpoints:
+  /api/questions (GET/POST)
+  /api/questions/generate-test (POST)
+  /api/tests (GET)
+  /api/tests/:id (GET)
+  /api/attempts (GET/POST)
+  /api/attempts/:id/answers (POST)
+  /api/attempts/:id/complete (POST)
+  /api/study-plan (GET/POST)
+  /api/uploads/history (GET)
+  /api/uploads/:id/process (POST)
+
+MAIN PROBLEMS TO FIX
+1) UI exists but data is empty; features appear like placeholders.
+2) Planner generation returns nothing or doesn’t persist.
+3) Mock tests and question bank are empty due to no seed and no content ingestion.
+4) AI scoring is not integrated; no OpenAI calls wired; no subscription enforcement.
+5) Need production security hardening.
+
+NON-NEGOTIABLE FEATURES
+
+A) Real Seed Content (immediate usability)
+- Add a seed script that inserts ORIGINAL, non-copyright demo content:
+  - at least 10 reading passages (short)
+  - 80+ questions across multiple question types
+  - 2 complete mock tests (reading/listening/writing/speaking structure)
+- Seed must be idempotent and safe.
+
+B) Question Bank (real)
+- Filters: section, question type, difficulty, tags, search
+- Practice flow: answer -> instant marking (if answer exists) + explanation
+- “Why wrong” explanations:
+  - use stored explanation if present
+  - otherwise AI generates a short explanation
+- Store practice in attempts + attempt_answers.
+
+C) Mock Tests (real exam mode)
+- Generate full tests with correct IELTS GT structure:
+  - Reading: 3 sections, 40 questions total, group by passage/part
+  - Listening: 4 parts, 40 questions total
+  - Writing: Task 1 Letter + Task 2 Essay (typed, timed)
+  - Speaking: Part 1 + Part 2 cue card (prep + talk timer) + Part 3
+- Strict timing, autosave, resume attempts.
+- End report: raw scores for reading/listening and AI feedback bands for writing/speaking.
+
+D) Planner + Band Jump Gap Analyzer (real)
+- User chooses target band + exam date.
+- Planner generates day-by-day tasks for 15-day and 30-day modes.
+- Must persist to study_plans.plan_data and render later.
+- Use attempts history to focus on weak areas.
+- “Band Jump” view: show gaps vs target band using IELTS descriptors.
+
+E) Training Lab extras (real)
+1) Typing Speed Trainer: WPM + accuracy + timed drills (computer-based writing).
+2) Reading Question Type Trainer: TF/NG, matching headings/info, MCQ, sentence completion, short answer.
+3) Speaking Simulator: timed prompts + record audio + feedback.
+4) Writing Coach: templates for GT letters + essays, with correction and rewrite.
+
+OPENAI INTEGRATION (server-side only)
+- Use OpenAI for all AI features (no Anthropic).
+- Keep keys server-side only (env var OPENAI_API_KEY).
+- Default text model: gpt-4o-mini
+- Speech-to-text model: gpt-4o-mini-transcribe
+- Optional TTS (for AI-generated listening packs): gpt-4o-mini-tts
+AI tasks:
+- Writing scoring (Task 1 letter, Task 2 essay): rubric-based band estimate + criterion breakdown + improvements + corrected version.
+- Speaking scoring: STT -> rubric feedback + band estimate + drills.
+- “Why wrong” explanations for incorrect answers.
+- Study plan generation using structured outputs (JSON schema).
+IMPORTANT: Prevent context overflow by chunking + retrieval; never send entire books in one prompt.
+
+UPLOADS / CONTENT INGESTION (copyright-safe and robust)
+- The app must not ship Cambridge copyrighted materials.
+- Support BYO Content:
+  - user uploads PDFs/images/text/audio they own/have rights to use
+  - all content is private per user
+  - add checkbox: “I confirm I have rights to upload this for personal study”
+- Processing pipeline:
+  Step 1: Upload record saved in uploads table (status=uploaded)
+  Step 2: Extract text:
+    - PDF text extraction
+    - OCR only if needed
+  Step 3: AI extraction into structured JSON:
+    - passages (title/content/metadata)
+    - questions (type/options/correct_answer/explanation/tags)
+    - set confidence per question
+  Step 4: Review & Fix UI:
+    - user can edit extracted items before final import
+  Step 5: Import:
+    - insert into passages/questions and optionally create tests entries
+- Fallbacks for messy documents:
+  - allow user to paste text
+  - allow upload of answer key separately
+  - allow “manual correction” if confidence low
+
+LISTENING CONTENT OPTIONS (production-safe)
+Implement three listening sources:
+1) AI-generated listening packs (original):
+   - generate transcript + optionally generate TTS audio
+   - generate questions + answer key + section structure
+2) User-owned audio upload:
+   - transcribe via OpenAI STT
+   - generate questions + answer key
+3) YouTube link mode (PRO PLAN ONLY):
+   - user pastes YouTube link, app embeds player
+   - AUTO transcript generation ONLY if captions/transcript is available via allowed/legit method
+   - If transcript not available, prompt user to paste transcript or upload audio they own
+   - Never download/rip YouTube audio/video
+
+SUBSCRIPTIONS (do NOT mention “AI budget” to the user)
+Add subscription plans and enforce usage internally:
+Plans:
+- PLUS: $40/month
+- PRO: $70/month
+
+User-facing page must show a clear comparison of VALUE and allowances:
+Include:
+- uploads per month (files + total pages)
+- number of full mock tests generated per month
+- number of practice sessions per day/month
+- writing evaluations per month
+- speaking minutes per month
+- access to YouTube listening feature (PRO only)
+- priority processing speed (PRO faster queue)
+- advanced analytics (PRO deeper analytics + mistake heatmap)
+- saved study plans, streaks, and review history
+
+Internally enforce caps by:
+- storing subscription in DB (subscriptions table)
+- logging usage events (usage_events table)
+- monthly reset by billing cycle
+When a cap is reached:
+- show user-friendly message: “You’ve reached this month’s limit for X. Upgrade to PRO or wait for reset.”
+Optional: provide “lite feedback” mode before hard block.
+
+SECURITY / PRODUCTION HARDENING (must)
+- Secure cookies (httpOnly, secure, sameSite)
+- CSRF protection for state-changing requests if cookie sessions
+- Rate limiting (login + AI endpoints + uploads)
+- Strict input validation with zod for all endpoints
+- SQL injection safe queries (parameterized)
+- Authorization checks: every user-specific query scoped by user_id
+- Upload security: file type/size limits, private storage, signed URLs, malware scan hook
+- Helmet/CSP headers and CORS locked down
+- Audit logs for auth actions, uploads, AI calls, subscription changes
+
+DELIVERABLES / ACCEPTANCE TESTS
+- A new user can sign up -> see working dashboard (even before uploads due to seeded demo content).
+- Question bank has real questions and filters work.
+- Planner generates and persists study plans and renders properly.
+- Mock test can be started -> answers saved -> completion shows results + review.
+- Writing and speaking AI feedback works and is saved.
+- Upload -> process -> review -> import -> new practice set/test appears.
+- Subscription limits are enforced and UI communicates limits clearly.
+- YouTube listening transcript automation works only on PRO and only via allowed transcript/caption methods.
+
+Now implement this end-to-end in the existing codebase (do not rebuild the UI from scratch). 
+Fix routes, add seed, add services, add security middleware, and verify by calling endpoints.
+Return a concise list of changed files and instructions to run seed and deploy on Replit.
