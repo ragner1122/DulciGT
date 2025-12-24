@@ -442,28 +442,54 @@ export default function ExamInterface() {
 
                       {(currentQuestion.type === 'multiple_choice' || currentQuestion.type === 'true_false_not_given') && (
                         <div className="space-y-3">
-                          {(currentQuestion.options as string[] || []).map((opt) => (
-                            <label
-                              key={opt}
-                              className={cn(
-                                "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
-                                answers[currentQuestion.id] === opt
-                                  ? "border-accent bg-accent/5 ring-1 ring-accent"
-                                  : "border-border bg-card"
-                              )}
-                              data-testid={`option-${opt}`}
-                            >
-                              <input
-                                type="radio"
-                                name={`q-${currentQuestion.id}`}
-                                value={opt}
-                                checked={answers[currentQuestion.id] === opt}
-                                onChange={() => handleAnswerChange(currentQuestion.id, opt)}
-                                className="w-5 h-5 text-accent border-gray-300 focus:ring-accent"
-                              />
-                              <span className="text-lg">{opt}</span>
-                            </label>
-                          ))}
+                          {currentQuestion.options && typeof currentQuestion.options === 'object' ? (
+                            Object.entries(currentQuestion.options as Record<string, string>).map(([key, value]) => (
+                              <label
+                                key={key}
+                                className={cn(
+                                  "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
+                                  answers[currentQuestion.id] === key
+                                    ? "border-accent bg-accent/5 ring-1 ring-accent"
+                                    : "border-border bg-card"
+                                )}
+                                data-testid={`option-${key}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`q-${currentQuestion.id}`}
+                                  value={key}
+                                  checked={answers[currentQuestion.id] === key}
+                                  onChange={() => handleAnswerChange(currentQuestion.id, key)}
+                                  className="w-5 h-5 text-accent border-gray-300 focus:ring-accent"
+                                />
+                                <span className="text-lg font-medium mr-2">{key.toUpperCase()}.</span>
+                                <span className="text-lg">{value}</span>
+                              </label>
+                            ))
+                          ) : currentQuestion.type === 'true_false_not_given' ? (
+                            ['True', 'False', 'Not Given'].map((opt) => (
+                              <label
+                                key={opt}
+                                className={cn(
+                                  "flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all",
+                                  answers[currentQuestion.id] === opt
+                                    ? "border-accent bg-accent/5 ring-1 ring-accent"
+                                    : "border-border bg-card"
+                                )}
+                                data-testid={`option-${opt}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`q-${currentQuestion.id}`}
+                                  value={opt}
+                                  checked={answers[currentQuestion.id] === opt}
+                                  onChange={() => handleAnswerChange(currentQuestion.id, opt)}
+                                  className="w-5 h-5 text-accent border-gray-300 focus:ring-accent"
+                                />
+                                <span className="text-lg">{opt}</span>
+                              </label>
+                            ))
+                          ) : null}
                         </div>
                       )}
 
