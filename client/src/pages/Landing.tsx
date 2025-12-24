@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, Globe, BookOpen } from "lucide-react";
+import { ArrowRight, CheckCircle2, Globe, BookOpen, BrainCircuit, Target } from "lucide-react";
 
 export default function Landing() {
   const { user, isLoading } = useAuth();
