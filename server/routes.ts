@@ -7,6 +7,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 import { registerChatRoutes } from "./replit_integrations/chat";
 import { registerImageRoutes } from "./replit_integrations/image";
 import { registerObjectStorageRoutes } from "./replit_integrations/object_storage";
+import { seedDatabase } from "./seed";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -18,6 +19,9 @@ export async function registerRoutes(
   registerChatRoutes(app);
   registerImageRoutes(app);
   registerObjectStorageRoutes(app);
+  
+  // Seed database on startup
+  await seedDatabase();
 
   // API Routes
   
@@ -131,30 +135,5 @@ export async function registerRoutes(
     res.json({ success: true });
   });
 
-  // Seeding
-  await seedDatabase();
-
   return httpServer;
-}
-
-async function seedDatabase() {
-  const existingTests = await storage.getTests();
-  if (existingTests.length === 0) {
-    // Add a demo test
-    await storage.createTest({
-      title: "IELTS GT Mock Test 1",
-      structure: { sections: ["listening", "reading", "writing", "speaking"] },
-      isSystem: true
-    });
-    
-    // Add some dummy questions
-    await storage.createQuestion({
-      section: "reading",
-      type: "multiple_choice",
-      content: "What is the main topic of the passage?",
-      options: ["History", "Science", "Art", "Sports"],
-      correctAnswer: "History",
-      difficulty: 1
-    });
-  }
 }

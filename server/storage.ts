@@ -55,9 +55,42 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(tests).orderBy(desc(tests.createdAt));
   }
 
-  async getTest(id: number): Promise<Test | undefined> {
+  async getTest(id: number): Promise<any> {
     const [test] = await db.select().from(tests).where(eq(tests.id, id));
-    return test;
+    if (!test) return undefined;
+    
+    // Extract question IDs from structure and fetch them
+    const questionIds: number[] = [];
+    const structure = test.structure as any;
+    
+    if (structure?.sections) {
+      for (const section of structure.sections) {
+        if (section.questionIds) {
+          questionIds.push(...section.questionIds);
+        }
+      }
+    }
+    
+    if (structure?.tasks) {
+      for (const task of structure.tasks) {
+        if (task.questionId) questionIds.push(task.questionId);
+      }
+    }
+    
+    if (structure?.parts) {
+      for (const part of structure.parts) {
+        if (part.questionId) questionIds.push(part.questionId);
+      }
+    }
+    
+    let testQuestions: Question[] = [];
+    if (questionIds.length > 0) {
+      testQuestions = await db.select().from(questions).where(
+        questions.id.inArray(questionIds)
+      );
+    }
+    
+    return { ...test, questions: testQuestions };
   }
 
   async createTest(test: any): Promise<Test> {
