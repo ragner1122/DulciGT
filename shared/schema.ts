@@ -98,6 +98,8 @@ export const uploads = pgTable("uploads", {
 export const insertQuestionSchema = createInsertSchema(questions).omit({ id: true });
 export const insertTestSchema = createInsertSchema(tests).omit({ id: true, createdAt: true });
 export const insertAttemptSchema = createInsertSchema(attempts).omit({ id: true, startedAt: true, completedAt: true });
+// Client input schema - userId is added by server from session
+export const createAttemptInputSchema = insertAttemptSchema.omit({ userId: true });
 export const insertAnswerSchema = createInsertSchema(attemptAnswers).omit({ id: true });
 export const insertPlanSchema = createInsertSchema(studyPlans).omit({ id: true, createdAt: true, progress: true });
 export const insertUploadSchema = createInsertSchema(uploads).omit({ id: true, createdAt: true });

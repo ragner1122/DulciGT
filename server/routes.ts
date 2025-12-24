@@ -94,32 +94,58 @@ export async function registerRoutes(
     res.json(attempts);
   });
 
+  app.get(api.attempts.get.path, isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const attemptWithDetails = await storage.getAttemptWithDetails(Number(id));
+      if (!attemptWithDetails) {
+        return res.status(404).json({ message: "Attempt not found" });
+      }
+      res.json(attemptWithDetails);
+    } catch (err) {
+      handleError(res, err);
+    }
+  });
+
   app.post(api.attempts.create.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const input = api.attempts.create.input.parse(req.body);
-    const attempt = await storage.createAttempt({ ...input, userId });
-    res.status(201).json(attempt);
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      const input = api.attempts.create.input.parse(req.body);
+      const attempt = await storage.createAttempt({ ...input, userId });
+      res.status(201).json(attempt);
+    } catch (err) {
+      handleError(res, err);
+    }
   });
 
   app.post(api.attempts.submitAnswer.path, isAuthenticated, async (req, res) => {
-    const { id } = req.params;
-    const { questionId, answer } = req.body;
-    // Save answer
-    await storage.saveAnswer({
-      attemptId: Number(id),
-      questionId,
-      answer,
-      isCorrect: false, // Logic to check answer needed
-      score: 0
-    });
-    res.json({ success: true });
+    try {
+      const { id } = req.params;
+      const { questionId, answer } = req.body;
+      await storage.upsertAnswer({
+        attemptId: Number(id),
+        questionId,
+        answer,
+        isCorrect: false,
+        score: 0
+      });
+      res.json({ success: true });
+    } catch (err) {
+      handleError(res, err);
+    }
   });
 
   app.post(api.attempts.complete.path, isAuthenticated, async (req, res) => {
-     const { id } = req.params;
-     // Calculate score logic here
-     const attempt = await storage.updateAttemptStatus(Number(id), "completed", { total: 0 }, new Date());
-     res.json(attempt);
+    try {
+      const { id } = req.params;
+      const attempt = await storage.updateAttemptStatus(Number(id), "completed", { total: 0 }, new Date());
+      res.json(attempt);
+    } catch (err) {
+      handleError(res, err);
+    }
   });
 
   // Study Plan

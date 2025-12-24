@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertQuestionSchema, insertTestSchema, insertAttemptSchema, insertUploadSchema, questions, tests, attempts, studyPlans, uploads } from './schema';
+import { insertQuestionSchema, insertTestSchema, insertAttemptSchema, createAttemptInputSchema, insertUploadSchema, questions, tests, attempts, studyPlans, uploads } from './schema';
 
 // Custom plan schema that handles:
 // - targetBand: accepts float (6.5) and transforms to int x2 (13) for DB storage
@@ -93,10 +93,18 @@ export const api = {
         200: z.array(z.custom<typeof attempts.$inferSelect>()),
       },
     },
+    get: {
+      method: 'GET' as const,
+      path: '/api/attempts/:id',
+      responses: {
+        200: z.custom<AttemptWithDetails>(),
+        404: errorSchemas.notFound,
+      },
+    },
     create: {
       method: 'POST' as const,
       path: '/api/attempts',
-      input: insertAttemptSchema,
+      input: createAttemptInputSchema, // Client sends testId and status only; server adds userId from session
       responses: {
         201: z.custom<typeof attempts.$inferSelect>(),
       },
@@ -174,4 +182,29 @@ export type InsertPlan = {
   targetBand: number;
   examDate: Date | string;
   planData?: any;
+};
+
+export type Attempt = typeof attempts.$inferSelect;
+export type InsertAttempt = z.infer<typeof createAttemptInputSchema>;
+export type Question = typeof questions.$inferSelect;
+export type Test = typeof tests.$inferSelect;
+export type Passage = {
+  id: number;
+  title: string;
+  content: string;
+  section: string;
+  metadata: any;
+};
+
+export type AttemptWithDetails = Attempt & {
+  test: Test & { questions: Question[] };
+  answers: {
+    id: number;
+    attemptId: number;
+    questionId: number;
+    answer: any;
+    isCorrect: boolean | null;
+    score: number | null;
+  }[];
+  passages: Passage[];
 };

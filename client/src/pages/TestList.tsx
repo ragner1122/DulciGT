@@ -16,7 +16,7 @@ export default function TestList() {
       { testId, status: "in_progress" },
       {
         onSuccess: (attempt) => {
-          setLocation(`/tests/${attempt.id}`); // Navigate to attempt interface, NOT test ID directly
+          setLocation(`/exam/${attempt.id}`);
         },
       }
     );

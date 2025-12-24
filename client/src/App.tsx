@@ -60,7 +60,7 @@ function Router() {
       <Route path="/tests">
         <ProtectedRoute component={TestList} />
       </Route>
-      <Route path="/tests/:id">
+      <Route path="/exam/:attemptId">
         <ProtectedRoute component={ExamInterface} />
       </Route>
       <Route path="/bank">

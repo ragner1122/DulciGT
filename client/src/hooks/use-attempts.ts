@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type Attempt, type InsertAttempt } from "@shared/routes";
+import { api, buildUrl, type Attempt, type InsertAttempt, type AttemptWithDetails } from "@shared/routes";
 
 export function useAttempts() {
   return useQuery({
@@ -9,6 +9,20 @@ export function useAttempts() {
       if (!res.ok) throw new Error("Failed to fetch attempts");
       return api.attempts.list.responses[200].parse(await res.json());
     },
+  });
+}
+
+export function useAttempt(id: number) {
+  return useQuery<AttemptWithDetails | null>({
+    queryKey: ['/api/attempts', id],
+    queryFn: async () => {
+      const url = buildUrl(api.attempts.get.path, { id });
+      const res = await fetch(url, { credentials: "include" });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to fetch attempt");
+      return await res.json();
+    },
+    enabled: !!id && id > 0,
   });
 }
 

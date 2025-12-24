@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import {
   questions, tests, attempts, attemptAnswers, studyPlans, uploads, passages,
   type Question, type InsertQuestion, type Test, type Attempt, type InsertAttempt, type AttemptAnswer, type StudyPlan, type InsertQuestion as InsertQuestionType
@@ -13,14 +13,21 @@ export interface IStorage {
   // Tests
   getTests(): Promise<Test[]>;
   getTest(id: number): Promise<Test | undefined>;
-  createTest(test: any): Promise<Test>; // Typed as any for now to bypass strict InsertTest mismatch if any
+  createTest(test: any): Promise<Test>;
+  
+  // Passages
+  getPassage(id: number): Promise<any | undefined>;
+  getPassagesByIds(ids: number[]): Promise<any[]>;
   
   // Attempts
   createAttempt(attempt: InsertAttempt): Promise<Attempt>;
   getAttempt(id: number): Promise<Attempt | undefined>;
+  getAttemptWithDetails(id: number): Promise<any | undefined>;
   getUserAttempts(userId: string): Promise<Attempt[]>;
   updateAttemptStatus(id: number, status: string, score?: any, completedAt?: Date): Promise<Attempt>;
   saveAnswer(answer: any): Promise<AttemptAnswer>;
+  getAttemptAnswers(attemptId: number): Promise<AttemptAnswer[]>;
+  upsertAnswer(answer: any): Promise<AttemptAnswer>;
   
   // Plans
   getStudyPlan(userId: string): Promise<StudyPlan | undefined>;
@@ -124,6 +131,67 @@ export class DatabaseStorage implements IStorage {
   async saveAnswer(answer: any): Promise<AttemptAnswer> {
     const [saved] = await db.insert(attemptAnswers).values(answer).returning();
     return saved;
+  }
+
+  async getAttemptAnswers(attemptId: number): Promise<AttemptAnswer[]> {
+    return await db.select().from(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId));
+  }
+
+  async upsertAnswer(answer: any): Promise<AttemptAnswer> {
+    const existing = await db.select().from(attemptAnswers)
+      .where(eq(attemptAnswers.attemptId, answer.attemptId))
+      .where(eq(attemptAnswers.questionId, answer.questionId));
+    
+    if (existing.length > 0) {
+      const [updated] = await db.update(attemptAnswers)
+        .set({ answer: answer.answer, isCorrect: answer.isCorrect, score: answer.score })
+        .where(eq(attemptAnswers.id, existing[0].id))
+        .returning();
+      return updated;
+    } else {
+      const [saved] = await db.insert(attemptAnswers).values(answer).returning();
+      return saved;
+    }
+  }
+
+  async getPassage(id: number): Promise<any | undefined> {
+    const [passage] = await db.select().from(passages).where(eq(passages.id, id));
+    return passage;
+  }
+
+  async getPassagesByIds(ids: number[]): Promise<any[]> {
+    if (ids.length === 0) return [];
+    return await db.select().from(passages).where(inArray(passages.id, ids));
+  }
+
+  async getAttemptWithDetails(id: number): Promise<any | undefined> {
+    const attempt = await this.getAttempt(id);
+    if (!attempt) return undefined;
+    
+    if (!attempt.testId) return { ...attempt, test: null, answers: [], passages: [] };
+    
+    const test = await this.getTest(attempt.testId);
+    if (!test) return { ...attempt, test: null, answers: [], passages: [] };
+    
+    const answers = await this.getAttemptAnswers(id);
+    
+    const passageIds: number[] = [];
+    if (test.questions) {
+      for (const q of test.questions) {
+        if (q.passageId && !passageIds.includes(q.passageId)) {
+          passageIds.push(q.passageId);
+        }
+      }
+    }
+    
+    const passagesList = await this.getPassagesByIds(passageIds);
+    
+    return {
+      ...attempt,
+      test,
+      answers,
+      passages: passagesList
+    };
   }
 
   async getStudyPlan(userId: string): Promise<StudyPlan | undefined> {
