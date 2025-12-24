@@ -1,0 +1,174 @@
+You are continuing the existing Replit codebase. Continue from PHASE_1_COMPLETE.md and your existing changes.
+Do NOT re-architect. Do NOT break the existing DB schema. Do NOT leave placeholders.
+Every button must work or be disabled with an explanation.
+
+ABSOLUTE PRIORITY: Fix crashes and ensure core flows are real before adding new features.
+
+-----------------------------------
+PHASE 0 (HOTFIX) — MUST DO FIRST
+-----------------------------------
+The app is crashing with Zod validation errors:
+- targetBand: Expected integer, received float
+- examDate: Expected date, received string
+
+Fix this without changing DB schema:
+
+1) Band storage rule (no schema changes):
+- DB column study_plans.target_band is integer.
+- Support half bands by storing band_x2:
+  storeTargetBandInt = Math.round(userBandFloat * 2)
+  displayBand = storedInt / 2
+- Update server validation: accept float input but transform to int.
+- Update client: keep showing 6.0/6.5/7.0 etc but send as float; server transforms.
+
+2) Exam date parsing:
+- Accept ISO strings from client and use z.coerce.date() on server.
+- Persist as timestamp in DB.
+
+3) Error handling:
+- No crash screens. Add centralized error handler for API routes.
+- Catch Zod errors and return 400 JSON { message, field } matching shared errorSchemas.validation.
+- Add UI friendly toast/alert for validation failures.
+
+4) Verify the fix:
+- Generate study plan from UI (both 15-day and 30-day modes) and confirm it saves and reloads.
+- Confirm app preview never crashes from bad input.
+
+-----------------------------------
+STACK / CONTRACTS (NON-NEGOTIABLE)
+-----------------------------------
+- Replit deployment
+- Neon Postgres
+- Do not change existing tables/enums
+- shared/routes.ts is the source of truth: implement handlers EXACTLY for:
+  /api/questions (GET/POST)
+  /api/questions/generate-test (POST)
+  /api/tests (GET)
+  /api/tests/:id (GET)
+  /api/attempts (GET/POST)
+  /api/attempts/:id/answers (POST)
+  /api/attempts/:id/complete (POST)
+  /api/study-plan (GET/POST)
+  /api/uploads/history (GET)
+  /api/uploads/:id/process (POST)
+
+If you need new tables (subscriptions, usage_events), ADD them safely via migrations (do not alter existing schema).
+
+-----------------------------------
+PHASE 1.5 (SEED + UI WIRING VALIDATION)
+-----------------------------------
+User reports seeded content does not appear in Question Bank / Mock Tests in preview.
+Fix this by verifying and correcting:
+- Seed inserts with correct enum values: section must be exactly: listening, reading, writing, speaking.
+- /api/questions returns seeded questions and respects filters: section/type/limit.
+- Question Bank UI actually fetches /api/questions and renders results.
+- Mock Tests list fetches /api/tests and opens /api/tests/:id with questions populated.
+
+Add “real empty states” (not placeholders):
+- If zero questions: show “Seed not found / Add uploads / Run seed” with a button that triggers seed check (dev only).
+- Use skeleton loaders, not blank panels.
+
+-----------------------------------
+UPGRADE SEED (ORIGINAL CONTENT ONLY)
+-----------------------------------
+Expand seed idempotently (no duplicates):
+- 20 reading passages (mix short/long)
+- 200+ questions across types
+- 8 tests total (2 full mocks + practice variants)
+No copyrighted Cambridge content. Only original demo material.
+
+-----------------------------------
+PHASE 2 — FULL MOCK TEST FLOW (REAL)
+-----------------------------------
+- Create attempt -> answer submission -> completion -> review.
+- Timers, autosave, resume.
+- Auto-mark reading/listening where correct_answer exists.
+- Writing/speaking responses stored; AI scoring later (Phase 5).
+
+-----------------------------------
+PHASE 3 — PLANNER + ANALYTICS (REAL)
+-----------------------------------
+- Planner generates both 15-day and 30-day plans.
+- Persist to study_plans.plan_data and render later.
+- Adapt plan based on attempts history (weak areas).
+- Analytics dashboard: band progression estimate, skill breakdown, weakest area CTA, streak tracking.
+- PRO: mistake heatmap by question type.
+
+-----------------------------------
+PHASE 4 — UPLOADS / INGESTION (COPYRIGHT-SAFE)
+-----------------------------------
+BYO content only, private per user, rights confirmation checkbox.
+Pipeline:
+1) uploads row (status=uploaded)
+2) extract text (PDF parse; OCR only if needed)
+3) AI extract to structured JSON: passages/questions/answers/tags/confidence
+4) review & fix UI before import
+5) import into passages/questions/tests
+
+Fallbacks:
+- paste text
+- upload answer key separately
+- manual correction UI for low confidence
+
+Add delete upload + delete imported content tools.
+
+-----------------------------------
+PHASE 5 — OPENAI INTEGRATION (ASK FOR KEY ONLY WHEN NEEDED)
+-----------------------------------
+Use OpenAI only.
+MANDATORY: If OPENAI_API_KEY is missing, STOP and ask me for it (exact env var name). Then continue automatically.
+Models:
+- text: gpt-4o-mini
+- STT: gpt-4o-mini-transcribe
+- TTS: gpt-4o-mini-tts
+
+Implement:
+- Writing Task 1/2 rubric scoring + corrected version + model answer
+- Speaking simulator: record audio -> STT -> rubric scoring + drills
+- “Why wrong” explanations if missing; cache into question.explanation
+- Band jump planner: show rubric gaps vs target band
+
+AI COST CONTROL (internal only):
+Add subscriptions + usage_events tables and enforce feature limits (PLUS/PRO).
+Do NOT show “AI budget”. Show allowances + usage meter only.
+
+-----------------------------------
+LISTENING SOURCES (PRODUCTION SAFE)
+-----------------------------------
+1) AI-generated original listening packs (TTS + questions)
+2) User-owned audio upload (STT + questions)
+3) YouTube (PRO only): embed player + transcript-first pipeline ONLY if captions/transcript available legitimately.
+Never rip/download YouTube audio/video.
+
+-----------------------------------
+SECURITY (MUST)
+-----------------------------------
+- Secure cookies, CSRF (if cookie sessions), rate limiting
+- Zod validation on all endpoints
+- parameterized DB queries
+- authorization: always scope by user_id
+- upload size/type limits, private storage, signed URLs, malware scan hook placeholder
+- Helmet/CSP headers, CORS locked down
+- audit logs for key actions
+
+-----------------------------------
+TESTING REQUIREMENT (MUST)
+-----------------------------------
+Run automated tests + click-test UI (App testing ON).
+Provide curl checks for all endpoints.
+Validate:
+- seeded content visible in UI
+- planner no longer crashes and persists
+- mock test completes and shows review
+- upload pipeline works through review->import
+- limits enforce correctly
+- AI endpoints work after key is set, and feedback is saved to DB
+
+-----------------------------------
+OUTPUT REQUIRED
+-----------------------------------
+- list changed files
+- how to run seed
+- how to test endpoints quickly
+- deploy steps on Replit
+- confirm: no placeholders remain
