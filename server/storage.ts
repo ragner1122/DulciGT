@@ -72,18 +72,33 @@ export class DatabaseStorage implements IStorage {
     
     if (structure?.sections) {
       for (const section of structure.sections) {
+        // Direct questionIds in section
         if (section.questionIds) {
           questionIds.push(...section.questionIds);
+        }
+        // Nested tasks within section (Writing)
+        if (section.tasks) {
+          for (const task of section.tasks) {
+            if (task.questionId) questionIds.push(task.questionId);
+          }
+        }
+        // Nested parts within section (Speaking)
+        if (section.parts) {
+          for (const part of section.parts) {
+            if (part.questionId) questionIds.push(part.questionId);
+          }
         }
       }
     }
     
+    // Top-level tasks (legacy format)
     if (structure?.tasks) {
       for (const task of structure.tasks) {
         if (task.questionId) questionIds.push(task.questionId);
       }
     }
     
+    // Top-level parts (legacy format)
     if (structure?.parts) {
       for (const part of structure.parts) {
         if (part.questionId) questionIds.push(part.questionId);
@@ -93,7 +108,7 @@ export class DatabaseStorage implements IStorage {
     let testQuestions: Question[] = [];
     if (questionIds.length > 0) {
       testQuestions = await db.select().from(questions).where(
-        questions.id.inArray(questionIds)
+        inArray(questions.id, questionIds)
       );
     }
     
